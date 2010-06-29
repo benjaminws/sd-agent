@@ -583,7 +583,11 @@ class checks:
             # Deal with top         
             lines = top.split('\n')
             ram_M = lines[3].split(' ')[1]
-            max_ram = ram_M.replace('M','')
+            if 'G' in ram_M: # we have GB instead of MB so:
+                max_ram = int(ram_M.replace('G','')) * 1024
+            else:
+                max_ram = ram_M.replace('M','')
+
             ram = int(max_ram)
             free_ram = ram - usage
 
