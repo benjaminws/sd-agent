@@ -188,7 +188,7 @@ class agent(Daemon):
         if sys.platform == 'sunos5':
             psrinfo = subprocess.Popen(['psrinfo'], stdout=subprocess.PIPE, close_fds=True)
             wc = subprocess.Popen(['wc', '-l'], stdin=psrinfo.stdout, stdout=subprocess.PIPE, close_fds=True)
-            output = wc.communicate()[0].split(' ')[6].split('\n')[0]
+            output = wc.communicate()[0].split()[0]
             return int(output)
             
 
