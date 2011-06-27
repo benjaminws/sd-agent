@@ -11,7 +11,7 @@
 
 # General config
 agentConfig = {}
-agentConfig['debugMode'] = 0
+agentConfig['debugMode'] = 1
 agentConfig['checkFreq'] = 60
 
 agentConfig['version'] = '1.7.0'
@@ -98,6 +98,13 @@ try:
 
     if config.has_option('Main', 'couchdb_server'):
         agentConfig['CouchDBServer'] = config.get('Main', 'couchdb_server')
+
+    if config.has_option('Main', 'max_memory'):
+        agentConfig['max_memory'] = config.get('Main', 'max_memory')
+
+    if config.has_option('Main', 'max_swap'):
+        agentConfig['max_swap'] = config.get('Main', 'max_swap')
+
 
 except ConfigParser.NoSectionError, e:
     print 'Config file not found or incorrectly formatted'

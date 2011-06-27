@@ -574,30 +574,46 @@ class checks:
                 self.checksLogger.debug('getMemoryUsage: attempting Popen (top, swap)')
                 top = subprocess.Popen(['top', '-d 1'], stdout=subprocess.PIPE, close_fds=True).communicate()[0]
                 swap = subprocess.Popen(['swap', '-lh'], stdout=subprocess.PIPE, close_fds=True).communicate()[0]
-
+                max_swap = subprocess.Popen('pagesize', stdout=subprocess.PIPE, close_fds=True).communicate()[0]
+                
             except Exception, e:
                 import traceback
                 self.checksLogger.error('getMemoryUsage: exception = ' + traceback.format_exc())
                 return False
-           
+            
+            try:
+                max_ram = self.agentConfig['max_memory']
+             #   print max_ram
+            except Exception, e:
+                self.checksLogger.error('getMemoryUsage: exception = %s' % e)
+
+
             # Deal with top         
             lines = top.split('\n')
             ram_M = lines[3].split(' ')[1]
-            if 'G' in ram_M: # we have GB instead of MB so:
-                max_ram = int(ram_M.replace('G','')) * 1024
-            else:
-                max_ram = ram_M.replace('M','')
+            #if 'G' in ram_M: # we have GB instead of MB so:
+            #    max_ram = int(ram_M.replace('G','')) * 1024
+            #else:
+            #    max_ram = ram_M.replace('M','')
 
             ram = int(max_ram)
             free_ram = ram - usage
 
             # deal with swap
             lines = swap.split('\n')[1]
-            total_swap_m = lines.split(' ')[-6]
-            used_swap_m = lines.split(' ')[-1]
-            total_swap = total_swap_m.replace('M', '')
-            used_swap = used_swap_m.replace('M', '')
+            used_swap_m = lines.split()[-1]
+            total_swap = max_swap.split()[0]
+            if 'G' in used_swap_m:
+                used_swap = float(used_swap_m.replace('G', '')) * 1024
+            else:
+                used_swap = used_swap_m.replace('M', '')
             free_swap = int(total_swap) - int(used_swap)
+            if self.agentConfig['max_swap']:
+                prstat = subprocess.Popen(['/usr/bin/prstat', '-Z', '0', '1'], stdout=subprocess.PIPE)
+                output = prstat.stdout.read()
+                parts = output.splitlines()[-2].split()
+                used_swap = float(parts[2].replace('M', ''))
+                free_swap = int(self.agentConfig['max_swap']) - int(used_swap)
 
             self.checksLogger.debug('getMemoryUsage: Popen success, parsing')
             return {'physUsed' : usage, 'physFree' : free_ram, 'swapUsed' : used_swap, 'swapFree' : free_swap, 'cached' : 'NULL'}
@@ -1121,8 +1137,10 @@ class checks:
         # Get output from ps
         try:
             self.checksLogger.debug('getProcesses: attempting Popen')
-            
-            ps = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE, close_fds=True).communicate()[0]
+            if sys.platform == 'sunos5':
+                ps = subprocess.Popen(['/usr/ucb/ps', 'aux'], stdout=subprocess.PIPE, close_fds=True).communicate()[0]
+            else:
+                ps = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE, close_fds=True).communicate()[0]
             
         except Exception, e:
             import traceback
@@ -1140,8 +1158,10 @@ class checks:
         processLines = ps.split('\n')
         
         del processLines[0] # Removes the headers
-        processLines.pop() # Removes a trailing empty line
-        
+        try:
+            processLines.pop() # Removes a trailing empty line
+        except IndexError:
+            pass
         processes = []
         
         self.checksLogger.debug('getProcesses: Popen success, parsing, looping')
